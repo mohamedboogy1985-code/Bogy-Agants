@@ -1,0 +1,10 @@
+{
+  "name": "NexusAI - Voice Multi-Agent Operating System",
+  "description": "منصة وكلاء الذكاء الاصطناعي الصوتية المتقدمة: وكيل عام رئيسي يوجه وكلاء متخصصين لنظام ويندوز، إدارة مستندات إكسيل ووورد، والإنترنت والتحميلات مع أدوات تنفيذ حقيقية ومحاكاة دقيقة.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
