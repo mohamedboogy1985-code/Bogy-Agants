@@ -17,6 +17,8 @@
     "@types/canvas-confetti": "^1.9.0",
     "@vitejs/plugin-react": "^6.1.1",
     "canvas-confetti": "^1.9.4",
+    "cheerio": "^1.2.0",
+    "docx": "^9.13.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
@@ -24,6 +26,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.1",
+    "systeminformation": "^5.33.16",
     "vite": "^8.3.0",
     "xlsx": "^0.18.5"
   },

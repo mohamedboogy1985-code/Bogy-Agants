@@ -10,6 +10,7 @@ interface OfficeAgentViewProps {
   onAddExcelRow: () => void;
   onGenerateTemplate: (templateType: string) => void;
   isGenerating: boolean;
+  theme?: 'dark' | 'light';
 }
 
 export const OfficeAgentView: React.FC<OfficeAgentViewProps> = ({
@@ -19,6 +20,7 @@ export const OfficeAgentView: React.FC<OfficeAgentViewProps> = ({
   onAddExcelRow,
   onGenerateTemplate,
   isGenerating,
+  theme = 'dark',
 }) => {
   const [activeDocTab, setActiveDocTab] = useState<'excel' | 'word'>('excel');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
@@ -33,10 +35,10 @@ export const OfficeAgentView: React.FC<OfficeAgentViewProps> = ({
     }
   };
 
-  const handleDownloadWord = () => {
-    const success = FileExportService.exportToWord(wordData);
+  const handleDownloadWord = async () => {
+    const success = await FileExportService.exportToWord(wordData);
     if (success) {
-      setDownloadSuccess('تم تنزيل مستند الوورد (.docx) بنجاح على جهازك!');
+      setDownloadSuccess('تم تنزيل مستند الوورد الحقيقي (.docx) بنجاح على جهازك!');
       setTimeout(() => setDownloadSuccess(null), 3500);
     }
   };

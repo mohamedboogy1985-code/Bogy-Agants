@@ -1,8 +1,21 @@
 import * as XLSX from 'xlsx';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  AlignmentType,
+  BorderStyle,
+} from 'docx';
 import { ExcelSheetData, WordDocumentData } from '../types/agent';
 
 export class FileExportService {
-  // Export Excel (.xlsx) file using SheetJS
+  // Export Excel (.xlsx / .csv) file using SheetJS
   public static exportToExcel(data: ExcelSheetData, format: 'xlsx' | 'csv' = 'xlsx') {
     try {
       const allRows: (string | number)[][] = [data.headers, ...data.rows];
@@ -19,7 +32,7 @@ export class FileExportService {
       worksheet['!cols'] = colWidths;
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, data.sheetName || 'NexusReport');
+      XLSX.utils.book_append_sheet(workbook, worksheet, data.sheetName || 'BogyReport');
 
       const fileExt = format === 'xlsx' ? 'xlsx' : 'csv';
       const defaultFileName = data.fileName.endsWith(`.${fileExt}`)
@@ -34,8 +47,140 @@ export class FileExportService {
     }
   }
 
-  // Export Word (.docx compatible) file with rich HTML styling
-  public static exportToWord(doc: WordDocumentData) {
+  // Export Real Microsoft Word (.docx) file using the official 'docx' package
+  public static async exportToWord(doc: WordDocumentData): Promise<boolean> {
+    try {
+      const children: any[] = [];
+
+      // Document Title
+      children.push(
+        new Paragraph({
+          text: doc.title,
+          heading: HeadingLevel.TITLE,
+          alignment: AlignmentType.RIGHT,
+          spacing: { after: 200 },
+        })
+      );
+
+      // Subtitle if available
+      if (doc.subtitle) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: doc.subtitle,
+                italics: true,
+                color: '0369a1',
+                size: 24,
+              }),
+            ],
+            alignment: AlignmentType.RIGHT,
+            spacing: { after: 300 },
+          })
+        );
+      }
+
+      // Metadata Info
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `المؤلف: ${doc.author}   |   التاريخ: ${doc.date || new Date().toLocaleDateString('ar-EG')}`,
+              color: '64748b',
+              size: 20,
+            }),
+          ],
+          alignment: AlignmentType.RIGHT,
+          spacing: { after: 400 },
+        })
+      );
+
+      // Document Sections
+      for (const sec of doc.sections) {
+        children.push(
+          new Paragraph({
+            text: sec.heading,
+            heading: HeadingLevel.HEADING_2,
+            alignment: AlignmentType.RIGHT,
+            spacing: { before: 300, after: 150 },
+          })
+        );
+
+        const paragraphs = sec.content.split('\n');
+        for (const p of paragraphs) {
+          if (p.trim()) {
+            children.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: p.trim(),
+                    size: 22,
+                    color: '1e293b',
+                  }),
+                ],
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 150, line: 360 },
+              })
+            );
+          }
+        }
+      }
+
+      // Footer notice
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: '— صُنع بواسطة برنامج وكلاء بوجي للذكاء الاصطناعي (Bogy Agents AI Swarm OS) —',
+              italics: true,
+              color: '94a3b8',
+              size: 18,
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 500 },
+        })
+      );
+
+      const wordDoc = new Document({
+        sections: [
+          {
+            properties: {
+              page: {
+                margin: {
+                  top: 1440,
+                  right: 1440,
+                  bottom: 1440,
+                  left: 1440,
+                },
+              },
+            },
+            children,
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(wordDoc);
+      const fileName = doc.fileName.endsWith('.docx') ? doc.fileName : `${doc.fileName}.docx`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      return true;
+    } catch (error) {
+      console.error('Failed to export real Word .docx:', error);
+      // Fallback to HTML-based doc download
+      return this.fallbackExportWordHtml(doc);
+    }
+  }
+
+  // Fallback HTML-based docx download
+  private static fallbackExportWordHtml(doc: WordDocumentData): boolean {
     try {
       const sectionsHtml = doc.sections
         .map(
@@ -88,43 +233,27 @@ export class FileExportService {
               font-size: 11pt;
               color: #64748b;
             }
-            .footer-box {
-              margin-top: 40px;
-              padding-top: 15px;
-              border-top: 1px solid #cbd5e1;
-              font-size: 10pt;
-              color: #94a3b8;
-              text-align: center;
-            }
           </style>
         </head>
         <body>
           <div class="header-box">
             <h1 class="title">${doc.title}</h1>
-            ${doc.subtitle ? `<p style="font-size: 14pt; color: #475569; margin: 4px 0 12px 0;">${doc.subtitle}</p>` : ''}
+            ${doc.subtitle ? `<p style="font-size: 14pt; color: #0284c7; margin-bottom: 15px;">${doc.subtitle}</p>` : ''}
             <div class="meta">
-              <span>تاريخ التقرير: ${doc.date}</span> | 
-              <span>جهة الإعداد: ${doc.author}</span>
+              <span>المعدّ: <b>${doc.author}</b></span> | 
+              <span>التاريخ: ${doc.date}</span>
             </div>
           </div>
-          <div class="content">
-            ${sectionsHtml}
-          </div>
-          <div class="footer-box">
-            تم إنشاء وتنسيق هذا المستند آلياً بواسطة وكيل الذكاء الاصطناعي (Bogy DocuMaster Agent)
-          </div>
+          ${sectionsHtml}
         </body>
         </html>
       `;
 
       const blob = new Blob(['\ufeff', fullHtmlDoc], {
-        type: 'application/msword;charset=utf-8',
+        type: 'application/msword',
       });
 
-      const fileName = doc.fileName.endsWith('.docx') || doc.fileName.endsWith('.doc')
-        ? doc.fileName
-        : `${doc.fileName}.doc`;
-
+      const fileName = doc.fileName.endsWith('.docx') ? doc.fileName : `${doc.fileName}.docx`;
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = fileName;
@@ -133,45 +262,27 @@ export class FileExportService {
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
       return true;
-    } catch (error) {
-      console.error('Failed to export Word file:', error);
+    } catch (e) {
+      console.error('Fallback word export failed:', e);
       return false;
     }
   }
 
-  // Export script (.ps1 or .bat)
-  public static exportScript(content: string, fileName: string) {
-    try {
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      return true;
-    } catch (error) {
-      console.error('Failed to export script:', error);
-      return false;
-    }
+  // Trigger download of text or script file
+  public static triggerDownload(content: string, filename: string, mimeType = 'text/plain;charset=utf-8') {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
-  // Trigger download of any text/file content
-  public static triggerDownload(content: string, fileName: string, mimeType: string = 'text/plain') {
-    try {
-      const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      return true;
-    } catch (error) {
-      console.error('Failed to trigger download:', error);
-      return false;
-    }
+  // Export script helper alias
+  public static exportScript(content: string, filename: string) {
+    this.triggerDownload(content, filename);
   }
 }
